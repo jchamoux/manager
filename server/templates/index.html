@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement Audio</title>
+</head>
+<body>
+    <h1>Enregistrement Audio</h1>
+    <button id="recordButton">Enregistrer</button>
+    <button id="stopButton" disabled>Arrêter</button>
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+
+        document.getElementById('recordButton').addEventListener('click', async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.start();
+
+            document.getElementById('recordButton').disabled = true;
+            document.getElementById('stopButton').disabled = false;
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+        });
+
+        document.getElementById('stopButton').addEventListener('click', () => {
+            mediaRecorder.stop();
+
+            document.getElementById('recordButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('audio', audioBlob);
+
+                const response = await fetch('/upload_audio', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                console.log('Response from Lambda:', result);
+                audioChunks = [];
+            };
+        });
+    </script>
+</body>
+</html>
